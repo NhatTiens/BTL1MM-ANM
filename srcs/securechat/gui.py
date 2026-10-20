@@ -148,8 +148,7 @@ class ChatWindow:
         self.history = scrolledtext.ScrolledText(center, state="disabled", wrap="word",
                         borderwidth=0, highlightthickness=1, highlightbackground=BORDER,
                         highlightcolor=BORDER, background="#f8fcff",
-                        foreground=TEXT, font=(FONT, 11), padx=17, pady=17, spacing3=9)
-        self.history.pack(fill="both", expand=True)
+                        foreground=TEXT, font=(FONT, 11), padx=17, pady=17, spacing3=9, height=10)
         self.history.tag_configure("me", justify="right", foreground="#146a91",
                                    lmargin1=70, lmargin2=70, rmargin=12, spacing1=8)
         self.history.tag_configure("them", justify="left", foreground=NAVY,
@@ -158,7 +157,8 @@ class ChatWindow:
                                    spacing1=7, spacing3=7)
 
         composer = tk.Frame(center, bg=PANEL)
-        composer.pack(fill="x", pady=(12, 2))
+        # Reserve the bottom composer before allocating the expanding history.
+        composer.pack(side="bottom", fill="x", pady=(12, 2))
         self.entry = ttk.Entry(composer, textvariable=self.editor_var, style="Chat.TEntry")
         self.entry.pack(side="left", fill="x", expand=True, padx=(0, 9))
         self.entry.bind("<Return>", self._send_enter)
@@ -166,6 +166,7 @@ class ChatWindow:
         self.attach_button.pack(side="left", padx=(0, 7))
         self.send_button = ttk.Button(composer, text="Gửi ➤", style="Primary.TButton", command=self._send_message)
         self.send_button.pack(side="left")
+        self.history.pack(fill="both", expand=True)
         self._update_enabled()
 
     def _field(self, parent: tk.Frame, label: str, variable: tk.StringVar, width: int) -> None:
