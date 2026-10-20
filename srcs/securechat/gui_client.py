@@ -17,6 +17,8 @@ from .protocol import VERSION, recv_packet, send_packet
 from .session import SessionManager
 from .transfer import FileReceiver, send_file
 
+HEARTBEAT_INTERVAL = 20.0  # Must remain below the relay idle timeout (default 60s).
+
 EventHandler = Callable[[dict[str, Any]], None]
 
 
@@ -44,9 +46,13 @@ class GuiChatClient:
         self._callback = on_event
         self._socket: socket.socket | None = None
         self._send_lock = threading.Lock()
+        # One transaction lock covers encryption sequence assignment AND socket send.
+        # RLock permits send_message/send_file to establish a session inside it.
+        self._operation_lock = threading.RLock()
         self._state_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._heartbeat_thread: threading.Thread | None = None
         self._notified_disconnect = False
         self.session: SessionManager | None = None
         self.files: FileReceiver | None = None
@@ -84,6 +90,10 @@ class GuiChatClient:
             self._thread = threading.Thread(target=self._receive_loop, daemon=True,
                                             name=f"gui-reader-{self.name}")
             self._thread.start()
+            self._heartbeat_thread = threading.Thread(
+                target=self._heartbeat_loop, daemon=True, name=f"gui-heartbeat-{self.name}"
+            )
+            self._heartbeat_thread.start()
         except Exception:
             sock.close()
             raise
@@ -94,30 +104,46 @@ class GuiChatClient:
                 raise ConnectionError("Not connected")
             send_packet(self._socket, packet)
 
+    def _heartbeat_loop(self) -> None:
+        """Prevent idle relay disconnect without weakening its connection limit."""
+        while not self._stop.wait(HEARTBEAT_INTERVAL):
+            try:
+                self._send({"type": "ping"})
+            except (OSError, ConnectionError) as exc:
+                if not self._stop.is_set():
+                    self._emit("warning", message=f"Heartbeat failed: {type(exc).__name__}")
+                self.close()
+                return
+
     def request_peers(self) -> None:
         self._send({"type": "list_peers"})
 
     def establish_session(self, peer: str) -> None:
-        if peer == self.name:
-            raise ValueError("Cannot send a message to yourself")
-        assert self.session is not None
-        if not self.session.has_outgoing(peer):
-            self._send(self.session.create_session_init(peer))
-            self._emit("session_ready", peer=peer, message="Đã gửi yêu cầu thiết lập khóa bảo mật")
+        # Serializes simultaneous UI sends with signed session-init creation.
+        with self._operation_lock:
+            if peer == self.name:
+                raise ValueError("Cannot send a message to yourself")
+            assert self.session is not None
+            if not self.session.has_outgoing(peer):
+                self._send(self.session.create_session_init(peer))
+                self._emit("session_ready", peer=peer, message="Đã gửi yêu cầu thiết lập khóa bảo mật")
 
     def send_message(self, peer: str, message: str) -> None:
         if not message.strip():
             return
-        self.establish_session(peer)
-        assert self.session is not None
-        self._send(self.session.encrypt_payload("chat", peer, message.encode("utf-8")))
-        self._emit("message_sent", peer=peer, message=message)
+        with self._operation_lock:
+            self.establish_session(peer)
+            assert self.session is not None
+            self._send(self.session.encrypt_payload("chat", peer, message.encode("utf-8")))
+            self._emit("message_sent", peer=peer, message=message)
 
     def send_encrypted_file(self, peer: str, path: Path) -> None:
-        self.establish_session(peer)
-        assert self.session is not None
-        transfer_id = send_file(self.session, peer, Path(path), self._send)
-        self._emit("file_sent", peer=peer, path=str(path), transfer_id=transfer_id)
+        # Hold lock across the entire transfer; no chat packet may overtake a file chunk.
+        with self._operation_lock:
+            self.establish_session(peer)
+            assert self.session is not None
+            transfer_id = send_file(self.session, peer, Path(path), self._send)
+            self._emit("file_sent", peer=peer, path=str(path), transfer_id=transfer_id)
 
     def _receive_loop(self) -> None:
         try:
@@ -144,6 +170,9 @@ class GuiChatClient:
                         self._emit("file_receiving", peer=packet["sender"])
                     if saved:
                         self._emit("file_received", peer=packet["sender"], path=saved)
+                elif kind == "pong":
+                    # Heartbeats are transport liveness, not a chat message.
+                    pass
                 elif kind == "peers":
                     if isinstance(packet.get("names"), list):
                         self._emit("peers", peers=packet["names"])

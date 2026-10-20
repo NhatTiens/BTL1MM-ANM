@@ -47,6 +47,8 @@ class ChatWindow:
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.events: queue.Queue[dict[str, Any]] = queue.Queue()
+        # Single FIFO worker: click order must equal encrypted send order.
+        self.operations: queue.Queue[Callable[[], None] | None] = queue.Queue()
         self.client: GuiChatClient | None = None
         self.local_server: RelayServer | None = None
         self.server_thread: threading.Thread | None = None
@@ -79,6 +81,9 @@ class ChatWindow:
                         fieldbackground=ENTRY_BG, foreground=TEXT)
         style.configure("TEntry", padding=5, fieldbackground=ENTRY_BG, foreground=TEXT)
         self._build()
+        self._operation_thread = threading.Thread(target=self._operation_worker,
+                  daemon=True, name="gui-operation-worker")
+        self._operation_thread.start()
         self.root.after(80, self._drain_events)
 
     def _build(self) -> None:
@@ -217,13 +222,22 @@ class ChatWindow:
         for entry in (self.name_entry, self.mssvs_entry, self.host_entry, self.port_entry):
             entry.configure(state="disabled" if self.connected or self.client else "normal")
 
-    def _spawn(self, action: Callable[[], None]) -> None:
-        def worker() -> None:
+    def _operation_worker(self) -> None:
+        while True:
+            action = self.operations.get()
             try:
-                action()
-            except Exception as exc:
-                self.events.put({"kind": "ui_error", "message": f"{type(exc).__name__}: {exc}"})
-        threading.Thread(target=worker, daemon=True, name="gui-operation").start()
+                if action is None:
+                    return
+                try:
+                    action()
+                except Exception as exc:
+                    self.events.put({"kind": "ui_error", "message": f"{type(exc).__name__}: {exc}"})
+            finally:
+                self.operations.task_done()
+
+    def _spawn(self, action: Callable[[], None]) -> None:
+        if not self.is_closing:
+            self.operations.put(action)
 
     def _connect(self) -> None:
         name = self.name_var.get().strip()
@@ -394,6 +408,7 @@ class ChatWindow:
 
     def _on_close(self) -> None:
         self.is_closing = True
+        self.operations.put(None)
         if self.client:
             self.client.close()
         if self.local_server:

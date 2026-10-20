@@ -232,6 +232,11 @@ class RelayHandler(socketserver.BaseRequestHandler):
                 kind = packet["type"]
                 if kind == "list_peers":
                     self.reply({"type": "peers", "names": self.server.list_names()})
+                elif kind == "ping":
+                    if set(packet) != {"type"}:
+                        self.error("Invalid heartbeat packet")
+                    else:
+                        self.reply({"type": "pong"})
                 elif kind in ROUTED_TYPES:
                     if packet.get("sender") != self.name:
                         self.error("Sender does not match registered client")
