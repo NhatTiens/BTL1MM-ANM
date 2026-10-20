@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "btl1-e2ee-chat"
+version = "0.1.0"
+description = "Khung bai tap lon 1.1: E2EE chat va truyen tep"
+requires-python = ">=3.10"
+dependencies = ["cryptography>=42,<50"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+securechat-server = "securechat.server:main"
+securechat-client = "securechat.client:main"
+securechat-demo-setup = "securechat.demo_setup:main"
+
+[tool.setuptools.packages.find]
+where = ["srcs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

@@ -1,0 +1,24 @@
+# Identity, secrets, and demo-generated data
+.local/
+keys/
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+received/
+*.part
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.coverage
+# Editors and system
+.vscode/
+.idea/
+.DS_Store
