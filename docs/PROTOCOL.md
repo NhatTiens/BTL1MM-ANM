@@ -44,3 +44,7 @@ Mọi trường ngoài `nonce` và `ciphertext` trong encrypted packet đều n�
 **Cơ chế thứ tự:** Seq tăng liên tục theo một session gửi. Phía nhận giữ số seq cuối cùng của mỗi `(sender, session_id)` và từ chối seq cũ; không có cơ chế nhận packet không đúng thứ tự hoặc xác nhận lại trong bản demo.
 
 **Chống MitM:** Nếu khóa công khai được đưa vào thư mục tin cậy sau khi xác thực fingerprint ngoài băng, việc thay thế chữ ký/khóa phiên trên relay sẽ bị phát hiện. Nếu người dùng tải khóa giả từ Server rồi tự động tin, sự bảo đảm này không còn.
+
+## Kiểm tra transport và relay sau cập nhật Người 1
+
+Version 1 và giới hạn 512 KiB không đổi. Transport từ chối type rỗng, khóa JSON trùng, số không hữu hạn, Unicode không hợp lệ và độ sâu quá 64; lỗi framing hoặc JSON sẽ đóng kết nối. Server kiểm tra envelope và phản hồi error cho packet định tuyến thiếu trường hoặc sai kiểu, đồng thời giữ nguyên packet hợp lệ khi chuyển tiếp. Vì test relay gốc sử dụng chat tối giản, chat thiếu đồng thời session_id và nonce vẫn được chuyển tiếp như opaque data; Client thật vẫn cần đầy đủ envelope để xác thực và giải mã. Chi tiết ngoại lệ tương thích, kiểm tra từng loại packet và kết quả tích hợp nằm trong `docs/OWNER1_NETWORK.md`.

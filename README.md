@@ -13,7 +13,7 @@ Repository khởi động cho đề **1.1. Xây dựng hệ thống Chat và tru
 - Khởi tạo khóa phiên AES-256 bằng RSA-OAEP; ký gói khởi tạo bằng RSA-PSS; xác thực khóa công khai qua file trusted peer đã kiểm tra ngoài băng.
 - Chat dùng AES-256-GCM và chống phát lại bằng bộ đếm thứ tự tăng dần.
 - Truyền file theo chunk đã mã hóa, xác minh SHA256 sau khi nhận (mặc định giới hạn 20 MiB cho demo).
-- 14 bài kiểm thử đầu tiên và GitHub Actions để chạy test khi tạo Pull Request.
+- 113 trường hợp kiểm thử trên Linux sau cập nhật Người 1; GitHub Actions chạy test khi tạo Pull Request. Chi tiết phạm vi, kết quả và giới hạn trong `docs/OWNER1_NETWORK.md`.
 
 **Chưa hoàn thiện:** gia hạn khóa và dọn phiên cũ, tự động khôi phục kết nối, ACK và retry khi mất mạng, cải thiện giao diện, kiểm thử tấn công trong môi trường phòng lab, tài liệu báo cáo cuối cùng. Xem `docs/PROJECT_STATUS.md`.
 
@@ -155,3 +155,7 @@ Không commit key bí mật, không dùng MSSV làm khóa AES duy nhất, không
 Theo đề, nộp source/hướng dẫn sử dụng (`README.doc`, `srcs`, `refs`), báo cáo kỹ thuật 20–30 trang gồm Chương 1 đến Chương 4 và tài liệu tham khảo; đóng gói thành `Assigment1.zip`. *Bản ZIP này là khung repository để phát triển, không phải gói nộp cuối cùng.*
 
 **Mọi thay đổi về format packet cần cập nhật `docs/PROTOCOL.md` và test tương ứng trước khi Merge.**
+
+## Bàn giao Người 1
+
+Xem `docs/OWNER1_NETWORK.md` để biết thay đổi TCP Server, Protocol, kết quả tích hợp Alice và Bob, hướng dẫn áp dụng patch và các giới hạn còn tồn tại. Server mặc định tối đa 64 kết nối, handshake timeout 10 giây và I/O timeout 60 giây; có thể cấu hình qua `--max-connections`, `--handshake-timeout`, `--idle-timeout`. Dùng `--debug` để xem sự kiện định tuyến, không ghi nội dung packet.

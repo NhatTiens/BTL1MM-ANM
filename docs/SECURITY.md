@@ -22,6 +22,10 @@ Thử nghiệm toàn vẹn: chỉnh `seq` trong AAD hoặc ciphertext, AES-GCM t
 
 Không có cơ chế chứng thư số CA hoặc PKI để phân phối public key từ xa. Người sử dụng **phải tự xác minh** fingerprint đúng đối tượng qua kênh ngoài băng. Không có forward secrecy vì RSA-OAEP truyền khóa phiên: khi private key bị lộ về sau, kẻ đã ghi lại gói khởi tạo phiên có thể giải mã khóa phiên cũ. Có thể đề xuất X25519 kết hợp chứng thực để cải thiện trong tương lai nhưng không tự ý thay yêu cầu của đề.
 
-Chưa có ratchet, timeout/rotation/cleanup khóa hoàn chỉnh, bảo vệ private key bằng mật khẩu, chống DoS/rate limit, replay persist qua restart, cơ chế khôi phục khi nhận file bị ngắt, xử lý nhiều phiên/thiết bị, hay xác thực tài khoản lên Server. Client chỉ từ chối tin nhắn giả mạo theo pinned key; tên đăng ký trên Server không phải là danh tính đã xác thực. Khóa bí mật demo đang lưu trên đĩa bằng PEM không mã hóa và chỉ phù hợp môi trường phát triển cục bộ (chmod 600 ở POSIX). Không nên dùng hệ thống với dữ liệu thật nhạy cảm.
+Chưa có ratchet, timeout/rotation/cleanup khóa hoàn chỉnh, bảo vệ private key bằng mật khẩu, chống DoS đầy đủ hoặc rate limiting theo packet, replay persist qua restart, cơ chế khôi phục khi nhận file bị ngắt, xử lý nhiều phiên/thiết bị, hay xác thực tài khoản lên Server. Client chỉ từ chối tin nhắn giả mạo theo pinned key; tên đăng ký trên Server không phải là danh tính đã xác thực. Khóa bí mật demo đang lưu trên đĩa bằng PEM không mã hóa và chỉ phù hợp môi trường phát triển cục bộ (chmod 600 ở POSIX). Không nên dùng hệ thống với dữ liệu thật nhạy cảm.
 
 Thử nghiệm chỉ được thực hiện trên môi trường riêng do nhóm sở hữu hoặc có quyền kiểm thử. Không thực hiện scan/tấn công vào hệ thống ngoài phạm vi lab.
+
+## Giới hạn tài nguyên tại relay
+
+Bản cập nhật Người 1 giới hạn mặc định 64 kết nối, timeout handshake 10 giây và timeout I/O sau đăng ký 60 giây; đóng socket và join handler khi dừng Server. Đây là giảm thiểu cơ bản, chưa chống slowloris với dữ liệu gửi nhỏ giọt và chưa bảo đảm tính sẵn sàng trước DoS. Server không import module mật mã, không log MSSV hay payload. Chi tiết và kết quả test nằm trong `docs/OWNER1_NETWORK.md`.
